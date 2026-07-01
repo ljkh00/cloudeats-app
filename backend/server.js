@@ -1,6 +1,7 @@
 const express = require('express');
 const cors    = require('cors');
 const db      = require('./db');
+const authRoutes = require('./auth');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -8,6 +9,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));        // Serve HTML/CSS from /public
+app.use('/api/auth', authRoutes);
 
 // ── HEALTH CHECK ───────────────────────────────────
 app.get('/health', (req, res) => {
