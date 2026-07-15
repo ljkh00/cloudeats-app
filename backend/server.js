@@ -41,3 +41,31 @@ app.get('/api/menu/category/:category', async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`CloudEats backend running on port ${PORT}`));
+
+// ════════════════════════════════════════════════════
+// 🟢 USER SERVICE ZONE  →  services/user-service/
+//    Deps: express · mysql2 · bcrypt · jsonwebtoken
+//    DB:   MySQL  (users table)
+// ════════════════════════════════════════════════════
+// app.post('/api/auth/register', ...)
+// app.post('/api/auth/login', ...)
+// app.get('/api/users/:id', ...)
+
+// ════════════════════════════════════════════════════
+// 🔵 MENU SERVICE ZONE  →  services/menu-service/
+//    Deps: express · mysql2
+//    DB:   MySQL  (menu_items table)
+// ════════════════════════════════════════════════════
+// app.get('/api/menu', ...)
+// app.get('/api/menu/:id', ...)
+// app.get('/api/menu/category/:cat', ...)
+
+// ════════════════════════════════════════════════════
+// 🟣 ORDER SERVICE ZONE  →  services/order-service/
+//    Deps: express · mongodb · redis · jsonwebtoken
+//    DB:   MongoDB (orders) + Redis (cart)
+// ════════════════════════════════════════════════════
+// app.get('/api/cart/:userId', ...)
+// app.post('/api/cart/:userId/items', ...)
+// app.post('/api/orders', ...)
+// app.get('/api/orders/user/:userId', ...)

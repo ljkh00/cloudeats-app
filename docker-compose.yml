@@ -1,49 +1,27 @@
 services:
-  backend:
-    build: ./backend
-    container_name: cloudeats-backend
-    ports:
-      - "3000:3000"
-    environment:
-      DB_HOST:     db
-      DB_USER:     cloudeats_user
-      DB_PASSWORD: cloudeats_password
-      DB_NAME:     cloudeats_db
-      PORT:        3000
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - cloudeats-network
-    restart: on-failure
-
+  # ─────────────────────────────────────────────
+  # Databases
+  # ─────────────────────────────────────────────
   db:
     image: mysql:8.0
-    container_name: cloudeats-db
+    container_name: cloudeats-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE:      cloudeats_db
-      MYSQL_USER:          cloudeats_user
-      MYSQL_PASSWORD:      cloudeats_password
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=cloudeats
+    ports:
+      - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
       interval: 5s
-      timeout:  5s
-      retries:  10
+      timeout: 5s
+      retries: 10
     networks:
       - cloudeats-network
-  
-  redis:
-    image: redis:7-alpine
-    container_name: cloudeats-redis
-    ports:
-      - "6379:6379"
-    networks:
-      - cloudeats-network
-  
+    restart: unless-stopped
+ 
   mongo:
     image: mongo:7
     container_name: cloudeats-mongo
@@ -51,13 +29,107 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - cloudeats-network
-    
-networks:
-  cloudeats-network:
-    driver: bridge
+    restart: unless-stopped
+ 
+  redis:
+    image: redis:7-alpine
+    container_name: cloudeats-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - cloudeats-network
+    restart: unless-stopped
+    # No named volume — cart data is intentionally disposable.
+    # If Redis restarts, carts reset. Acceptable tradeoff (see Week 4 Lab 2).
+ 
+  # ─────────────────────────────────────────────
+  # Application services
+  # ─────────────────────────────────────────────
+  user-service:
+    build: ./services/user-service
+    ports:
+      - "3001:3001"
+    environment:
+      - MYSQL_HOST=db
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=cloudeats
+      - JWT_SECRET=your_jwt_secret
+      - PORT=3001
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - cloudeats-network
+    restart: unless-stopped
+ 
+  menu-service:
+    build: ./services/menu-service
+    ports:
+      - "3002:3002"
+    environment:
+      - MYSQL_HOST=db
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=cloudeats
+      - PORT=3002
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - cloudeats-network
+    restart: unless-stopped
+ 
+  order-service:
+    build: ./services/order-service
+    ports:
+      - "3003:3003"
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your_jwt_secret
+      - PORT=3003
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cloudeats-network
+    restart: unless-stopped
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - USER_SERVICE_URL=http://user-service:3001
+      - MENU_SERVICE_URL=http://menu-service:3002
+      - ORDER_SERVICE_URL=http://order-service:3003
+      - JWT_SECRET=your_jwt_secret
+      - PORT=8000
+    depends_on:
+      - user-service
+      - menu-service
+      - order-service
+    restart: unless-stopped
 
 volumes:
   mysql-data:
   mongo-data:
+  # redis-data intentionally omitted — see note above
+ 
+networks:
+  cloudeats-network:
+    driver: bridge
