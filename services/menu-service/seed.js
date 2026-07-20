@@ -4,5 +4,5 @@
   price: 9.50,
   category: 'Noodles',
   available: true,
-  rating: 4.5  
+  rating: 4.5 
 }
