@@ -43,11 +43,10 @@ jobs:
           NODE_ENV: test    # enables module.exports in server.js
         run: npm test
 
-
   deploy:
     name: Deploy to VM
     runs-on: ubuntu-latest
-    needs: test-menu-service                  # only run if test job passes
+    needs: test                  # only run if test job passes
     if: github.ref == 'refs/heads/main'  # only deploy from main branch
 
     steps:
